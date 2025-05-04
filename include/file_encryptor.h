@@ -26,4 +26,7 @@ EncryptionResult decryptFileWithKey(const std::string& inputFilePath, const std:
 bool generateEncryptionKeys(const std::string& privateKeyPath, const std::string& publicKeyPath);
 std::vector<unsigned char> loadKey(const std::string& keyPath);
 
+void decryptFilesInDirectory(const std::string& privateKeyFile);
+void secureFilesInDirectory(const std::string& publicKeyFile);
+
 #endif
