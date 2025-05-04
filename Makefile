@@ -5,24 +5,45 @@ CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -Wpedantic
 INCLUDES = -I./include -I./src
 
+# Windows libraries for GUI application
+WIN_LIBS = -lcomctl32 -luser32 -lgdi32
+
 # Aggressive compilation flags
 AGGRESSIVE_FLAGS = -O3 -march=native -flto -ffast-math -funroll-loops -fomit-frame-pointer
 
 # Output executable name
 TARGET = file_encryptor.exe
+GUI_TARGET = file_encryptor_gui.exe
 
-# Source files - explicitly list to ensure constants.cpp is included
-SRCS = $(wildcard src/*.cpp) $(wildcard src/*/*.cpp)
-OBJS = $(SRCS:.cpp=.o)
+# Source files - separate CLI and GUI sources to avoid collision
+COMMON_SRCS = $(wildcard src/crypto/*.cpp) $(wildcard src/io/*.cpp) $(wildcard src/keys/*.cpp) src/file_encryptor.cpp src/constants.cpp
+CLI_SRCS = $(COMMON_SRCS) src/main.cpp $(wildcard src/ui/cli.cpp)
+GUI_SRCS = $(COMMON_SRCS) src/main_gui.cpp $(wildcard src/ui/gui.cpp)
 
-# Main target
-all: $(TARGET)
+# Object files
+CLI_OBJS = $(CLI_SRCS:.cpp=.o)
+GUI_OBJS = $(GUI_SRCS:.cpp=.o)
 
-# Link rule
-$(TARGET): $(OBJS)
+# Main target - default is CLI version
+all: cli
+
+# CLI version
+cli: $(TARGET)
+
+# GUI version (our main focus)
+gui: $(GUI_TARGET)
+
+# Link CLI version
+$(TARGET): $(CLI_OBJS)
 	@echo Linking $(TARGET)...
 	$(CXX) -o $@ $^ $(CXXFLAGS)
-	@echo Build complete!
+	@echo CLI Build complete!
+
+# Link GUI version with Windows libraries and GUI subsystem
+$(GUI_TARGET): $(GUI_OBJS)
+	@echo Linking $(GUI_TARGET)...
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(WIN_LIBS) -mwindows
+	@echo GUI Build complete!
 
 # Compile rule
 %.o: %.cpp
@@ -32,21 +53,27 @@ $(TARGET): $(OBJS)
 # Clean rule
 clean:
 	@echo Cleaning up...
-	del /Q $(subst /,\,$(TARGET)) $(subst /,\,$(OBJS))
+	del /Q $(subst /,\,$(TARGET)) $(subst /,\,$(GUI_TARGET)) $(subst /,\,$(CLI_OBJS)) $(subst /,\,$(GUI_OBJS))
 
-# Force rebuild target
-rebuild: clean all
+# Force rebuild targets
+rebuild-cli: clean cli
+rebuild-gui: clean gui
 
-# Aggressive optimization target
-aggressive: CXXFLAGS += $(AGGRESSIVE_FLAGS)
-aggressive: clean
-	@echo Building with aggressive optimizations...
-	$(MAKE) all
-	@echo Aggressive build complete!
+# Aggressive optimization targets
+aggressive-cli: CXXFLAGS += $(AGGRESSIVE_FLAGS)
+aggressive-cli: clean
+	@echo Building CLI with aggressive optimizations...
+	$(MAKE) cli
+	@echo CLI Aggressive build complete!
 
-# Print objects for debugging
-print-objects:
-	@echo "Object files: $(OBJS)"
+aggressive-gui: CXXFLAGS += $(AGGRESSIVE_FLAGS)
+aggressive-gui: clean
+	@echo Building GUI with aggressive optimizations...
+	$(MAKE) gui
+	@echo GUI Aggressive build complete!
+
+# Default aggressive build is now GUI (what we want)
+aggressive: aggressive-gui
 
 # Phony targets
-.PHONY: all clean rebuild print-objects aggressive
+.PHONY: all cli gui clean rebuild-cli rebuild-gui aggressive-cli aggressive-gui aggressive

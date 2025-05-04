@@ -171,7 +171,6 @@ bool ECC::GenerateKeyPair(ECCKeyPair& keyPair) {
         ecc.generateKeyPair(keyPair.privateKey, keyPair.publicKey);
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "Error generating key pair: " << e.what() << std::endl;
         return false;
     }
 }
@@ -184,7 +183,6 @@ bool ECC::Sign(const std::vector<uint8_t>& privateKey, const std::string& messag
         signature = std::string(sigBytes.begin(), sigBytes.end());
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "Error signing message: " << e.what() << std::endl;
         return false;
     }
 }
@@ -196,7 +194,6 @@ bool ECC::Verify(const std::vector<uint8_t>& publicKey, const std::string& messa
         std::vector<uint8_t> sigBytes(signature.begin(), signature.end());
         return ecc.verify(messageBytes, sigBytes, publicKey);
     } catch (const std::exception& e) {
-        std::cerr << "Error verifying signature: " << e.what() << std::endl;
         return false;
     }
 }

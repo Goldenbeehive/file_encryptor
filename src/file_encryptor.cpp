@@ -5,7 +5,6 @@
 #include "io/file_handler.h"
 #include "keys/key_manager.h"
 #include "constants.h"
-#include <iostream>
 #include <fstream>
 #include <random>
 
@@ -41,14 +40,11 @@ bool generateEncryptionKeys(const std::string& privateKeyPath, const std::string
         );
         
         if (!privateImgResult || !publicImgResult) {
-            std::cerr << "Error: Failed to hide keys in image files." << std::endl;
             return false;
         }
         
-        std::cout << "Keys successfully stored in image files." << std::endl;
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "Error generating keys: " << e.what() << std::endl;
         return false;
     }
 }
@@ -59,14 +55,12 @@ std::vector<unsigned char> loadKey(const std::string& keyPath) {
         if (keyPath == "private.key" || keyPath == "security_key.prv" || keyPath.empty()) {
             auto keyData = Steganography::extractDataFromImage(PRIVATE_KEY_IMAGE);
             if (!keyData.empty()) {
-                std::cout << "Successfully loaded private key from image" << std::endl;
                 return keyData;
             }
         }
         else if (keyPath == "public.key" || keyPath == "security_key.pub" || keyPath.empty()) {
             auto keyData = Steganography::extractDataFromImage(PUBLIC_KEY_IMAGE);
             if (!keyData.empty()) {
-                std::cout << "Successfully loaded public key from image" << std::endl;
                 return keyData;
             }
         }
@@ -74,7 +68,6 @@ std::vector<unsigned char> loadKey(const std::string& keyPath) {
         // For any other key path, just try to load the file directly
         std::ifstream keyFile(keyPath, std::ios::binary);
         if (!keyFile) {
-            std::cerr << "Failed to open key file" << std::endl;
             return {};
         }
         
@@ -87,7 +80,6 @@ std::vector<unsigned char> loadKey(const std::string& keyPath) {
         
         return key;
     } catch (const std::exception& e) {
-        std::cerr << "Error loading key: " << e.what() << std::endl;
         return {};
     }
 }
@@ -184,8 +176,6 @@ EncryptionResult encryptFile(const std::string& inputFilePath, const std::string
             // Save to images only
             Steganography::hideDataInImage(PRIVATE_KEY_IMAGE, keyManager.getPrivateKey(), PRIVATE_KEY_IMAGE);
             Steganography::hideDataInImage(PUBLIC_KEY_IMAGE, publicKey, PUBLIC_KEY_IMAGE);
-            
-            std::cout << "New key pair generated and saved to images" << std::endl;
         }
     }
     

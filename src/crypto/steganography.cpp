@@ -1,7 +1,6 @@
 #include "steganography.h"
 #include <cstring>
 #include <stdexcept>
-#include <iostream>
 #include <filesystem>
 
 // STB Image implementation
@@ -45,7 +44,6 @@ bool hideDataInImage(const std::string& imagePath, const std::vector<unsigned ch
     // Create image if it doesn't exist
     if (!std::filesystem::exists(imagePath)) {
         if (!createImageIfNeeded(imagePath)) {
-            std::cerr << "Failed to create base image" << std::endl;
             return false;
         }
     }
@@ -55,7 +53,6 @@ bool hideDataInImage(const std::string& imagePath, const std::vector<unsigned ch
     unsigned char* img = stbi_load(imagePath.c_str(), &width, &height, &channels, 0);
     
     if (!img) {
-        std::cerr << "Error loading image: " << imagePath << std::endl;
         return false;
     }
     
@@ -64,7 +61,6 @@ bool hideDataInImage(const std::string& imagePath, const std::vector<unsigned ch
     
     // Check if image is big enough
     if (data.size() + 4 > maxBytes) {
-        std::cerr << "Image too small to hide " << data.size() << " bytes of data" << std::endl;
         stbi_image_free(img);
         return false;
     }
@@ -102,7 +98,6 @@ bool hideDataInImage(const std::string& imagePath, const std::vector<unsigned ch
 // Extract data from an image using LSB steganography
 std::vector<unsigned char> extractDataFromImage(const std::string& imagePath) {
     if (!std::filesystem::exists(imagePath)) {
-        std::cerr << "Image file not found: " << imagePath << std::endl;
         return {};
     }
     
@@ -110,7 +105,6 @@ std::vector<unsigned char> extractDataFromImage(const std::string& imagePath) {
     unsigned char* img = stbi_load(imagePath.c_str(), &width, &height, &channels, 0);
     
     if (!img) {
-        std::cerr << "Error loading image: " << imagePath << std::endl;
         return {};
     }
     
@@ -128,7 +122,6 @@ std::vector<unsigned char> extractDataFromImage(const std::string& imagePath) {
     // Check if data size is reasonable
     size_t maxBytes = (width * height * channels) / 8 - 4;
     if (dataSize > maxBytes || dataSize == 0) {
-        std::cerr << "Invalid data size or no data in image" << std::endl;
         stbi_image_free(img);
         return {};
     }

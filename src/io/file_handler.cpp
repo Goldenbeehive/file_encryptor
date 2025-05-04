@@ -1,12 +1,10 @@
 #include "file_handler.h"
 #include <fstream>
 #include <stdexcept>
-#include <iostream>
 
 bool readFromFile(const std::string& filePath, std::string& data) {
     std::ifstream inFile(filePath, std::ios::binary);
     if (!inFile) {
-        std::cerr << "Error: Could not open file for reading: " << filePath << std::endl;
         return false;
     }
     
@@ -18,7 +16,6 @@ bool readFromFile(const std::string& filePath, std::string& data) {
 bool writeToFile(const std::string& filePath, const std::string& data) {
     std::ofstream outFile(filePath, std::ios::binary);
     if (!outFile) {
-        std::cerr << "Error: Could not open file for writing: " << filePath << std::endl;
         return false;
     }
     

@@ -2,7 +2,6 @@
 #include "../crypto/ecc.h"
 #include <fstream>
 #include <stdexcept>
-#include <iostream>
 #include <cstdlib>
 
 // Constants
@@ -49,7 +48,6 @@ bool KeyManager::loadKeyPair(const std::string& privateKeyFile, const std::strin
         
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "Error loading key pair: " << e.what() << std::endl;
         privateKey.clear();
         publicKey.clear();
         return false;
@@ -73,7 +71,6 @@ bool KeyManager::saveKeyPair(const std::string& privateKeyFile, const std::strin
         
         return true;
     } catch (const std::exception& e) {
-        std::cerr << "Error saving key pair: " << e.what() << std::endl;
         return false;
     }
 }
@@ -126,7 +123,7 @@ void KeyManager::saveKey(const std::string& keyPath) {
         auto key = getCurrentKey();
         keyFile.write(reinterpret_cast<const char*>(key->data()), key->size());
     } catch (const std::exception& e) {
-        std::cerr << "Error saving key: " << e.what() << std::endl;
+        // Silently fail
     }
 }
 
