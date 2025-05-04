@@ -1,8 +1,10 @@
 #include "file_encryptor.h"
 #include "crypto/chacha20.h"
 #include "crypto/ecc.h"
+#include "crypto/steganography.h"
 #include "io/file_handler.h"
 #include "keys/key_manager.h"
+#include "constants.h"
 #include <iostream>
 #include <fstream>
 #include <random>
@@ -24,7 +26,27 @@ bool generateEncryptionKeys(const std::string& privateKeyPath, const std::string
     try {
         KeyManager keyManager;
         keyManager.generateKeyPair();
-        return keyManager.saveKeyPair(privateKeyPath, publicKeyPath);
+        
+        // Save keys only to images, not to regular files
+        bool privateImgResult = Steganography::hideDataInImage(
+            PRIVATE_KEY_IMAGE, 
+            keyManager.getPrivateKey(), 
+            PRIVATE_KEY_IMAGE
+        );
+        
+        bool publicImgResult = Steganography::hideDataInImage(
+            PUBLIC_KEY_IMAGE,
+            keyManager.getPublicKey(),
+            PUBLIC_KEY_IMAGE
+        );
+        
+        if (!privateImgResult || !publicImgResult) {
+            std::cerr << "Error: Failed to hide keys in image files." << std::endl;
+            return false;
+        }
+        
+        std::cout << "Keys successfully stored in image files." << std::endl;
+        return true;
     } catch (const std::exception& e) {
         std::cerr << "Error generating keys: " << e.what() << std::endl;
         return false;
@@ -33,6 +55,23 @@ bool generateEncryptionKeys(const std::string& privateKeyPath, const std::string
 
 std::vector<unsigned char> loadKey(const std::string& keyPath) {
     try {
+        // Always try to load from image first
+        if (keyPath == "private.key" || keyPath == "security_key.prv" || keyPath.empty()) {
+            auto keyData = Steganography::extractDataFromImage(PRIVATE_KEY_IMAGE);
+            if (!keyData.empty()) {
+                std::cout << "Successfully loaded private key from image" << std::endl;
+                return keyData;
+            }
+        }
+        else if (keyPath == "public.key" || keyPath == "security_key.pub" || keyPath.empty()) {
+            auto keyData = Steganography::extractDataFromImage(PUBLIC_KEY_IMAGE);
+            if (!keyData.empty()) {
+                std::cout << "Successfully loaded public key from image" << std::endl;
+                return keyData;
+            }
+        }
+        
+        // For any other key path, just try to load the file directly
         std::ifstream keyFile(keyPath, std::ios::binary);
         if (!keyFile) {
             std::cerr << "Failed to open key file" << std::endl;
@@ -53,28 +92,19 @@ std::vector<unsigned char> loadKey(const std::string& keyPath) {
     }
 }
 
-EncryptionResult encryptFile(const std::string& inputFilePath, const std::string& outputFilePath, 
-                           const std::string& keyPath) {
+// New implementation that accepts a pre-loaded key
+EncryptionResult encryptFileWithKey(const std::string& inputFilePath, const std::string& outputFilePath, 
+                                 const std::vector<unsigned char>& publicKey) {
     EncryptionResult result;
     
     try {
         std::vector<uint8_t> fileData = readBinaryFile(inputFilePath);
         
-        KeyManager keyManager;
-        std::vector<uint8_t> publicKey;
-        
-        if (!keyPath.empty()) {
-            publicKey = loadKey(keyPath);
-            if (publicKey.empty()) {
-                result.success = false;
-                result.message = "Failed to load public key";
-                return result;
-            }
-        } else {
-            keyManager.generateKeyPair();
-            publicKey = keyManager.getPublicKey();
-            keyManager.saveKeyPair("private.key", "public.key");
-            std::cout << "New key pair generated and saved to 'private.key' and 'public.key'" << std::endl;
+        // No need to load the key, it's provided as a parameter
+        if (publicKey.empty()) {
+            result.success = false;
+            result.message = "Invalid public key provided";
+            return result;
         }
 
         auto symmetricKey = generateSymmetricKey();
@@ -86,6 +116,7 @@ EncryptionResult encryptFile(const std::string& inputFilePath, const std::string
             nonce[i] = static_cast<uint8_t>(distrib(gen));
         }
         
+        // Rest of encryption process is the same
         std::vector<uint8_t> outputData;
         outputData.reserve(symmetricKey.size() + nonce.size() + fileData.size() + 8);
         
@@ -125,11 +156,55 @@ EncryptionResult encryptFile(const std::string& inputFilePath, const std::string
     }
 }
 
-EncryptionResult decryptFile(const std::string& inputFilePath, const std::string& outputFilePath, 
+// Modify existing encryptFile to use the new implementation
+EncryptionResult encryptFile(const std::string& inputFilePath, const std::string& outputFilePath, 
                            const std::string& keyPath) {
+    std::vector<uint8_t> publicKey;
+    
+    if (!keyPath.empty()) {
+        publicKey = loadKey(keyPath);
+        if (publicKey.empty()) {
+            // Try loading from default image
+            publicKey = Steganography::extractDataFromImage(PUBLIC_KEY_IMAGE);
+            if (publicKey.empty()) {
+                EncryptionResult result;
+                result.success = false;
+                result.message = "Failed to load public key from image";
+                return result;
+            }
+        }
+    } else {
+        // Try loading from default image
+        publicKey = Steganography::extractDataFromImage(PUBLIC_KEY_IMAGE);
+        if (publicKey.empty()) {
+            KeyManager keyManager;
+            keyManager.generateKeyPair();
+            publicKey = keyManager.getPublicKey();
+            
+            // Save to images only
+            Steganography::hideDataInImage(PRIVATE_KEY_IMAGE, keyManager.getPrivateKey(), PRIVATE_KEY_IMAGE);
+            Steganography::hideDataInImage(PUBLIC_KEY_IMAGE, publicKey, PUBLIC_KEY_IMAGE);
+            
+            std::cout << "New key pair generated and saved to images" << std::endl;
+        }
+    }
+    
+    return encryptFileWithKey(inputFilePath, outputFilePath, publicKey);
+}
+
+// New implementation for decryption with pre-loaded key
+EncryptionResult decryptFileWithKey(const std::string& inputFilePath, const std::string& outputFilePath, 
+                                 const std::vector<unsigned char>& privateKey) {
     EncryptionResult result;
     
     try {
+        // No need to load the key, it's provided as a parameter
+        if (privateKey.empty()) {
+            result.success = false;
+            result.message = "Invalid private key provided";
+            return result;
+        }
+        
         std::vector<uint8_t> encryptedData = readBinaryFile(inputFilePath);
         
         if (encryptedData.size() < 8) {
@@ -138,6 +213,7 @@ EncryptionResult decryptFile(const std::string& inputFilePath, const std::string
             return result;
         }
         
+        // Rest of decryption process is the same
         uint32_t keySize = (encryptedData[0] << 24) | (encryptedData[1] << 16) | 
                           (encryptedData[2] << 8) | encryptedData[3];
         
@@ -182,4 +258,27 @@ EncryptionResult decryptFile(const std::string& inputFilePath, const std::string
         result.message = std::string("Decryption error: ") + e.what();
         return result;
     }
+}
+
+// Modify existing decryptFile function to use the new implementation
+EncryptionResult decryptFile(const std::string& inputFilePath, const std::string& outputFilePath, 
+                           const std::string& keyPath) {
+    std::vector<uint8_t> privateKey;
+    
+    if (!keyPath.empty()) {
+        // Try to load private key from specified path or image
+        privateKey = loadKey(keyPath);
+    } else {
+        // Try to load from default image
+        privateKey = Steganography::extractDataFromImage(PRIVATE_KEY_IMAGE);
+    }
+    
+    if (privateKey.empty()) {
+        EncryptionResult result;
+        result.success = false;
+        result.message = "Failed to load private key for decryption";
+        return result;
+    }
+    
+    return decryptFileWithKey(inputFilePath, outputFilePath, privateKey);
 }
